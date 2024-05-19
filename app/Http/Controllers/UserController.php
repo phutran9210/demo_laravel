@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\SuccessResponse;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -10,6 +11,12 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+
+    public function __construct()
+    {
+        $this->middleware('register')->only('store');
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -32,31 +39,35 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:8',
-            ]);
-
-            if ($validator->fails()) {
+//            $validator = Validator::make($request->all(), [
+//                'name' => 'required|string|max:255',
+//                'email' => 'required|string|email|max:255|unique:users',
+//                'password' => 'required|string|min:8',
+//            ]);
+//
+//            if ($validator->fails()) {
+//                return response()->json([
+//                    'errors' => $validator->errors(),
+//                ], 422);
+//            }.
+            $existingUser = User::where('name', $request->name)->first();
+            if ($existingUser) {
                 return response()->json([
-                    'errors' => $validator->errors(),
-                ], 422);
+                    'message' => 'User already exists.',
+                ], 409);
             }
 
-            $user = User::create([
+            $newUser = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
+                'country' => $request->country,
+                'city' => $request->city,
             ]);
-            $user->roles()->attach(3);
-            $user->save();
+            $newUser->roles()->attach(3);
+            $newUser->save();
 
-            return response()->json([
-                'message' => 'User created successfully.',
-                'user' => $user,
-                'roles' => $user->roles,
-            ], 201);
+            return SuccessResponse::create('User created successfully.', $newUser, 201);
         } catch (\Throwable $th) {
             return response()->json([
                 'errors' => $th->getMessage(),
@@ -71,7 +82,7 @@ class UserController extends Controller
     public function show(string $id)
     {
         try {
-         $user = User::find($id);
+            $user = User::find($id);
             if (!$user) {
                 return response()->json([
                     'message' => 'User not found.',

@@ -23,9 +23,12 @@ Route::get('/', function () {
 //    return User::select('id', 'email as user_email')->where('is_active', 0)->get()->map(function ($user) {
 //        return $user->user_email;
 //    });
-    $users = User::with('posts')->get()[0]->posts->map(function ($post) {
-        return $post->title;
-    });
+    $users = User::with('posts')->where('id', 1)->get();
+
+    if (!$users || $users->isEmpty()) {
+        Log::warning('No posts found');
+        return response()->json(['message' => 'No posts found'], 404);
+    }
 //    $users->append('address');
     return $users;
 });
